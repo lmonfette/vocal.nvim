@@ -9,17 +9,14 @@ local fmt = require("vocal.utils").fmt
 --- @field local_model table|nil Local Whisper model settings
 --- @field api table API configuration for OpenAI Whisper
 --- @field ui table UI settings for status display
+--- @field debug boolean Enable debug logging
 local config = {
   api_key = nil,
   recording_dir = os.getenv("HOME") and fmt("%s/recordings", os.getenv("HOME"))
     or "/tmp/recordings",
   delete_recordings = true,
   keymap = "<leader>v",
-  local_model = {
-    model = "tiny",
-    path = os.getenv("HOME") and fmt("%s/.cache/vocal/models", os.getenv("HOME"))
-      or "/tmp/vocal_models",
-  },
+  debug = false,
   api = {
     model = "whisper-1",
     language = nil,
@@ -32,15 +29,5 @@ local config = {
     display_time = 3000,
   },
 }
-
---- Ensures directory exists
---- @param dir string Directory path
---- @return boolean Success status
-local function ensure_dir_exists(dir) return os.execute(fmt('mkdir -p "%s"', dir)) end
-
---- Initializes plugin by creating recording directory
-local function init() ensure_dir_exists(config.recording_dir) end
-
-init()
 
 return config
