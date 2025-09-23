@@ -72,8 +72,6 @@ function M.start_recording(recording_dir, on_start, on_error)
         active_channel_tx = nil
       end
 
-      local exists = vim.fn.filereadable(stopped_filename) == 1
-      local size = vim.fn.getfsize(stopped_filename) or 0
       -- Updated to include exit code 15 as potentially successful
       local potentially_successful_exit = (
         code == 0
@@ -87,40 +85,53 @@ function M.start_recording(recording_dir, on_start, on_error)
         stopped_filename,
         "Exit code:",
         code,
-        "File exists:",
-        exists,
-        "Size:",
-        size,
         "Potentially successful exit:",
         potentially_successful_exit
       )
 
-      if current_tx then
+      -- For short recordings, give the file system a brief moment to flush data
+      -- before checking file properties
+      vim.defer_fn(function()
+        local exists = vim.fn.filereadable(stopped_filename) == 1
+        local size = vim.fn.getfsize(stopped_filename) or 0
+
         api.debug_log(
-          fmt(
-            "Sox job exited with code %d. Sending result on channel for %s",
-            code,
-            stopped_filename
+          "File check after brief delay:",
+          stopped_filename,
+          "File exists:",
+          exists,
+          "Size:",
+          size
+        )
+
+        if current_tx then
+          api.debug_log(
+            fmt(
+              "Sox job exited with code %d. Sending result on channel for %s (size after delay: %d)",
+              code,
+              stopped_filename,
+              size
+            )
           )
-        )
-        vim.schedule(
-          function()
-            current_tx({
-              filename = stopped_filename,
-              code = code,
-              potentially_successful_exit = potentially_successful_exit,
-              file_exists = exists,
-              file_size = size,
-            })
-          end
-        )
-      else
-        api.debug_log(
-          "Sox job exited but no active channel sender (tx) was found for PID "
-            .. exited_job.pid
-            .. ". This might happen if stop_recording was called multiple times or the job ended unexpectedly before full setup."
-        )
-      end
+          vim.schedule(
+            function()
+              current_tx({
+                filename = stopped_filename,
+                code = code,
+                potentially_successful_exit = potentially_successful_exit,
+                file_exists = exists,
+                file_size = size,
+              })
+            end
+          )
+        else
+          api.debug_log(
+            "Sox job exited but no active channel sender (tx) was found for PID "
+              .. exited_job.pid
+              .. ". This might happen if stop_recording was called multiple times or the job ended unexpectedly before full setup."
+          )
+        end
+      end, 100) -- 100ms delay to allow file system to flush
     end,
   })
 
