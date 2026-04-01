@@ -129,7 +129,7 @@ def transcribe_audio(audio_file: str, model_name: str, model_path_config: str) -
             print(f"Error: Audio file not found at '{audio_file}'", file=sys.stderr)
             sys.exit(1)
 
-        result = model.transcribe(audio_file)
+        result = model.transcribe(audio_file, fp16=False)
         print(result["text"])
 
     except Exception as e:
